@@ -1,1 +1,1 @@
-undefined
+"""Domain layer."""
