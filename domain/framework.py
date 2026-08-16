@@ -1,5 +1,9 @@
 """Framework components and ResearchFramework contract."""
+from __future__ import annotations
+
 from enum import Enum
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel
 
 
@@ -38,18 +42,10 @@ class ResearchFramework(BaseModel):
 
     @property
     def is_complete(self) -> bool:
-        if self.type == FrameworkType.PICO:
-            return all([
-                self.population is not None,
-                self.intervention is not None,
-                self.comparator is not None,
-                self.outcome is not None,
-            ])
-        if self.type == FrameworkType.PECO:
-            return all([
-                self.population is not None,
-                self.exposure is not None,
-                self.comparator is not None,
-                self.outcome is not None,
-            ])
-        return False
+        # Import here to avoid circular import at module load time.
+        from services.framework_validator import (
+            FrameworkValidationStatus,
+            validate_framework,
+        )
+        result = validate_framework(self)
+        return result.status == FrameworkValidationStatus.COMPLETE
