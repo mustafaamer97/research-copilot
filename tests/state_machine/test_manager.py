@@ -163,4 +163,45 @@ def test_blocked_gate_does_not_append_history():
     assert len(project.transition_history) == 0
 
 
-def 
+def test_gate_blocked_error_contains_reasons():
+    project = _base_project()
+    with pytest.raises(GateBlockedError) as exc_info:
+        manager.transition(project, ResearchState.QUESTION_DEFINED, ActorType.RESEARCHER)
+    assert len(exc_info.value.reasons) > 0
+
+
+def test_incomplete_framework_blocks_transition():
+    project = _base_project(
+        state=ResearchState.QUESTION_DEFINED,
+        research_question=ResearchQuestion(text="Does X reduce Y?"),
+        framework=ResearchFramework(type=FrameworkType.PICO),
+    )
+    with pytest.raises(GateBlockedError):
+        manager.transition(project, ResearchState.FRAMEWORK_DEFINED, ActorType.RESEARCHER)
+    assert project.state == ResearchState.QUESTION_DEFINED
+
+
+def test_complete_pico_framework_passes_to_framework_defined():
+    project = _project_at_question_defined()
+    manager.transition(project, ResearchState.FRAMEWORK_DEFINED, ActorType.RESEARCHER)
+    assert project.state == ResearchState.FRAMEWORK_DEFINED
+
+
+def test_design_selected_gate_always_blocked():
+    project = _base_project(state=ResearchState.FRAMEWORK_DEFINED)
+    with pytest.raises(GateBlockedError):
+        manager.transition(project, ResearchState.DESIGN_SELECTED, ActorType.RESEARCHER)
+    assert project.state == ResearchState.FRAMEWORK_DEFINED
+
+
+def test_multiple_sequential_transitions():
+    project = _project_at_question_defined()
+    project.state = ResearchState.IDEA
+    project.research_question = ResearchQuestion(text="Does X reduce Y?")
+
+    manager.transition(project, ResearchState.QUESTION_DEFINED, ActorType.RESEARCHER)
+    assert project.state == ResearchState.QUESTION_DEFINED
+
+    manager.transition(project, ResearchState.FRAMEWORK_DEFINED, ActorType.RESEARCHER)
+    assert project.state == ResearchState.FRAMEWORK_DEFINED
+    assert len(project.transition_history) == 2
