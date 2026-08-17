@@ -1,5 +1,6 @@
 """Screening layer public API."""
 from screening.criteria import ExclusionCriteria, InclusionCriteria, ScreeningCriteria
+from screening.session import ScreeningSession
 from screening.workspace import (
     ScreeningProgress,
     ScreeningRecordNotFoundError,
@@ -12,5 +13,6 @@ __all__ = [
     "ScreeningCriteria",
     "ScreeningProgress",
     "ScreeningRecordNotFoundError",
+    "ScreeningSession",
     "ScreeningWorkspace",
 ]
