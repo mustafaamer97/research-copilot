@@ -1,89 +1,113 @@
-"""Screening session domain contract."""
+"""
+Screening Session — Sprint 3.
+
+ScreeningSession owns:
+- a stable session ID
+- ScreeningCriteria
+- ScreeningWorkspace
+- ScreeningHistory  (Task 17: audit trail of explicit decision changes)
+
+The session delegates screening operations to ScreeningWorkspace.
+History is recorded explicitly via record_decision_change().
+No AI. No external APIs.
+"""
+
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+import uuid
+from typing import List
 
-from domain.actors import ActorType
-from domain.screening import ScreeningDecision, ScreeningRecord
 from screening.criteria import ScreeningCriteria
-from screening.workspace import ScreeningProgress, ScreeningWorkspace
+from screening.history import ScreeningDecisionHistoryEntry, ScreeningHistory
+from screening.workspace import ScreeningWorkspace
 
 
 class ScreeningSession:
     """
-    One screening context binding criteria to a workspace of literature records.
+    A screening session for one research project screening pass.
 
-    - Criteria are required and fixed for the session.
-    - Workspace manages all screening record state.
-    - Never automates decisions.
-    - Never calls AI.
+    Owns:
+    - session_id: stable UUID string
+    - criteria: ScreeningCriteria
+    - workspace: ScreeningWorkspace
+    - history: ScreeningHistory (append-only audit log of decision changes)
+
+    Responsibilities:
+    - Delegates workspace operations to ScreeningWorkspace.
+    - Records explicit researcher decision changes via record_decision_change().
+    - Does NOT auto-generate history entries.
+    - Does NOT modify ScreeningWorkspace internals.
     """
 
     def __init__(
         self,
         criteria: ScreeningCriteria,
-        literature_record_ids: list[UUID] | None = None,
-        session_id: UUID | None = None,
+        workspace: ScreeningWorkspace,
+        session_id: str | None = None,
     ) -> None:
-        if criteria is None:
-            raise ValueError("ScreeningSession requires valid ScreeningCriteria.")
+        if not isinstance(criteria, ScreeningCriteria):
+            raise TypeError(
+                f"Expected ScreeningCriteria, got {type(criteria).__name__}."
+            )
+        if not isinstance(workspace, ScreeningWorkspace):
+            raise TypeError(
+                f"Expected ScreeningWorkspace, got {type(workspace).__name__}."
+            )
 
-        self._id: UUID = session_id if session_id is not None else uuid4()
+        self._session_id: str = session_id if session_id else str(uuid.uuid4())
         self._criteria: ScreeningCriteria = criteria
-        self._workspace: ScreeningWorkspace = ScreeningWorkspace()
-
-        if literature_record_ids:
-            self._workspace.add_records(literature_record_ids)
+        self._workspace: ScreeningWorkspace = workspace
+        self._history: ScreeningHistory = ScreeningHistory()
 
     # ------------------------------------------------------------------
     # Identity
     # ------------------------------------------------------------------
 
     @property
-    def id(self) -> UUID:
-        return self._id
+    def session_id(self) -> str:
+        return self._session_id
+
+    # ------------------------------------------------------------------
+    # Criteria
+    # ------------------------------------------------------------------
 
     @property
     def criteria(self) -> ScreeningCriteria:
         return self._criteria
+
+    # ------------------------------------------------------------------
+    # Workspace delegation
+    # ------------------------------------------------------------------
 
     @property
     def workspace(self) -> ScreeningWorkspace:
         return self._workspace
 
     # ------------------------------------------------------------------
-    # Delegation — workspace operations
+    # History — Task 17
     # ------------------------------------------------------------------
 
-    def get_screening_record(self, literature_record_id: UUID) -> ScreeningRecord:
-        return self._workspace.get(literature_record_id)
+    @property
+    def history(self) -> ScreeningHistory:
+        """The append-only audit log of explicit decision changes."""
+        return self._history
 
-    def set_decision(
-        self,
-        literature_record_id: UUID,
-        decision: ScreeningDecision,
-        decided_by: ActorType,
-        reason: str | None = None,
-        notes: str | None = None,
-        decided_at=None,
-    ) -> ScreeningRecord:
-        return self._workspace.set_decision(
-            literature_record_id=literature_record_id,
-            decision=decision,
-            decided_by=decided_by,
-            reason=reason,
-            notes=notes,
-            decided_at=decided_at,
-        )
+    def record_decision_change(self, entry: ScreeningDecisionHistoryEntry) -> None:
+        """
+        Record an explicit researcher decision change into the session history.
 
-    def pending(self) -> list[ScreeningRecord]:
-        return self._workspace.pending()
+        The caller is responsible for constructing the ScreeningDecisionHistoryEntry
+        with the correct previous_decision, new_decision, changed_by, and changed_at.
 
-    def counts(self) -> dict[str, int]:
-        return self._workspace.counts()
+        This method does NOT call set_decision() on the workspace.
+        It does NOT auto-generate entries.
+        It does NOT modify workspace internals.
 
-    def progress(self) -> ScreeningProgress:
-        return self._workspace.progress()
-
-    def total(self) -> int:
-        return self._workspace.total()
+        Raises:
+            TypeError: if entry is not a ScreeningDecisionHistoryEntry.
+        """
+        if not isinstance(entry, ScreeningDecisionHistoryEntry):
+            raise TypeError(
+                f"Expected ScreeningDecisionHistoryEntry, got {type(entry).__name__}."
+            )
+        self._history.record(entry)
