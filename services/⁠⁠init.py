@@ -14,6 +14,10 @@ from services.next_action import (
     NextActionPriority,
     get_next_action,
 )
+from services.search_strategy_builder import (
+    SearchStrategyValidationError,
+    build_search_strategy,
+)
 from services.study_design_recommender import (
     StudyDesignRecommendation,
     recommend_study_design,
@@ -27,7 +31,9 @@ __all__ = [
     "MissingInformationPriority",
     "NextAction",
     "NextActionPriority",
+    "SearchStrategyValidationError",
     "StudyDesignRecommendation",
+    "build_search_strategy",
     "generate_tasks_for_project",
     "get_missing_information",
     "get_next_action",
