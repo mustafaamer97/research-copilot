@@ -9,6 +9,7 @@ from domain.framework import (
     Population,
     ResearchFramework,
 )
+from domain.literature import ExternalSource, LiteratureRecord
 from domain.project import ResearchProject
 from domain.research_question import ResearchQuestion
 from domain.state import ResearchState
@@ -18,9 +19,11 @@ from domain.transition import TransitionRecord
 __all__ = [
     "ActorType",
     "Comparator",
+    "ExternalSource",
     "Exposure",
     "FrameworkType",
     "Intervention",
+    "LiteratureRecord",
     "Outcome",
     "Population",
     "ResearchFramework",
