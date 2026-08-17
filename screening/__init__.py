@@ -1,4 +1,7 @@
-"""Screening layer public API."""
+"""
+Screening domain public API.
+"""
+
 from screening.criteria import ExclusionCriteria, InclusionCriteria, ScreeningCriteria
 from screening.session import ScreeningSession
 from screening.workspace import (
@@ -6,6 +9,7 @@ from screening.workspace import (
     ScreeningRecordNotFoundError,
     ScreeningWorkspace,
 )
+from screening.history import ScreeningDecisionHistoryEntry
 
 __all__ = [
     "ExclusionCriteria",
@@ -15,4 +19,6 @@ __all__ = [
     "ScreeningRecordNotFoundError",
     "ScreeningSession",
     "ScreeningWorkspace",
+    # Task 15
+    "ScreeningDecisionHistoryEntry",
 ]
