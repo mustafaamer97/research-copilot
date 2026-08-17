@@ -1,14 +1,19 @@
 """
-Screening Decision History Contract — Task 15.
+Screening Decision History Contract — Tasks 15 & 16.
 
-Represents one explicit researcher decision change for a literature record.
-Immutable. No AI. No external APIs. No LiteratureRecord embedded.
+Task 15: ScreeningDecisionHistoryEntry
+    Immutable record of a single explicit researcher decision change.
+
+Task 16: ScreeningHistory
+    Append-only log of ScreeningDecisionHistoryEntry objects.
+    Provides retrieval by literature_record_id and full audit access.
+    No AI. No external APIs. No ScreeningWorkspace modification.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -92,3 +97,66 @@ class ScreeningDecisionHistoryEntry(BaseModel):
                 f"Both are '{self.previous_decision.value}'."
             )
         return self
+
+
+class ScreeningHistory:
+    """
+    Append-only log of ScreeningDecisionHistoryEntry objects.
+
+    Stores the complete audit trail of explicit researcher screening
+    decision changes across all literature records in a screening session.
+
+    Rules:
+    - Only ScreeningDecisionHistoryEntry objects are accepted.
+    - Entries are stored in insertion order.
+    - Retrieval by literature_record_id returns entries in insertion order.
+    - No entry can be removed or modified after recording.
+    - No AI. No external API. No ScreeningWorkspace modification.
+    """
+
+    def __init__(self) -> None:
+        self._entries: List[ScreeningDecisionHistoryEntry] = []
+        self._index: Dict[str, List[ScreeningDecisionHistoryEntry]] = {}
+
+    def record(self, entry: ScreeningDecisionHistoryEntry) -> None:
+        """
+        Record a decision change entry.
+
+        Raises:
+            TypeError: if entry is not a ScreeningDecisionHistoryEntry.
+        """
+        if not isinstance(entry, ScreeningDecisionHistoryEntry):
+            raise TypeError(
+                f"Expected ScreeningDecisionHistoryEntry, got {type(entry).__name__}."
+            )
+        self._entries.append(entry)
+        self._index.setdefault(entry.literature_record_id, []).append(entry)
+
+    def for_record(self, literature_record_id: str) -> List[ScreeningDecisionHistoryEntry]:
+        """
+        Return all history entries for a given literature_record_id,
+        in insertion order.
+
+        Returns an empty list if no entries exist for that ID.
+        """
+        return list(self._index.get(literature_record_id, []))
+
+    def all_entries(self) -> List[ScreeningDecisionHistoryEntry]:
+        """
+        Return all history entries across all records, in insertion order.
+        """
+        return list(self._entries)
+
+    def count(self) -> int:
+        """Total number of recorded history entries."""
+        return len(self._entries)
+
+    def count_for_record(self, literature_record_id: str) -> int:
+        """Number of history entries for a given literature_record_id."""
+        return len(self._index.get(literature_record_id, []))
+
+    def has_history(self, literature_record_id: str) -> bool:
+        """Return True if any history entries exist for the given ID."""
+        return literature_record_id in self._index and bool(
+            self._index[literature_record_id]
+        )
