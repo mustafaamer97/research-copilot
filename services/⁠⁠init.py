@@ -4,6 +4,11 @@ from services.framework_validator import (
     FrameworkValidationStatus,
     validate_framework,
 )
+from services.literature_source import (
+    LiteratureSearchResult,
+    LiteratureSourceAdapter,
+    LiteratureSourceError,
+)
 from services.missing_information import (
     MissingInformation,
     MissingInformationPriority,
@@ -27,6 +32,9 @@ from services.task_engine import generate_tasks_for_project
 __all__ = [
     "FrameworkValidationResult",
     "FrameworkValidationStatus",
+    "LiteratureSearchResult",
+    "LiteratureSourceAdapter",
+    "LiteratureSourceError",
     "MissingInformation",
     "MissingInformationPriority",
     "NextAction",
