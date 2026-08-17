@@ -1,4 +1,5 @@
 """Screening layer public API."""
+from screening.criteria import ExclusionCriteria, InclusionCriteria, ScreeningCriteria
 from screening.workspace import (
     ScreeningProgress,
     ScreeningRecordNotFoundError,
@@ -6,6 +7,9 @@ from screening.workspace import (
 )
 
 __all__ = [
+    "ExclusionCriteria",
+    "InclusionCriteria",
+    "ScreeningCriteria",
     "ScreeningProgress",
     "ScreeningRecordNotFoundError",
     "ScreeningWorkspace",
