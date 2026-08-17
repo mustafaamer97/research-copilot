@@ -9,7 +9,7 @@ from screening.workspace import (
     ScreeningRecordNotFoundError,
     ScreeningWorkspace,
 )
-from screening.history import ScreeningDecisionHistoryEntry
+from screening.history import ScreeningDecisionHistoryEntry, ScreeningHistory
 
 __all__ = [
     "ExclusionCriteria",
@@ -21,4 +21,6 @@ __all__ = [
     "ScreeningWorkspace",
     # Task 15
     "ScreeningDecisionHistoryEntry",
+    # Task 16
+    "ScreeningHistory",
 ]
