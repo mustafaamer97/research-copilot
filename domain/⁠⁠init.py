@@ -10,6 +10,7 @@ from domain.framework import (
     ResearchFramework,
 )
 from domain.literature import ExternalSource, LiteratureRecord
+from domain.literature_search import LiteratureSearchStrategy
 from domain.project import ResearchProject
 from domain.research_question import ResearchQuestion
 from domain.state import ResearchState
@@ -24,6 +25,7 @@ __all__ = [
     "FrameworkType",
     "Intervention",
     "LiteratureRecord",
+    "LiteratureSearchStrategy",
     "Outcome",
     "Population",
     "ResearchFramework",
