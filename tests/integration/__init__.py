@@ -1,1 +1,1 @@
-undefined
+"""Integration tests package."""
