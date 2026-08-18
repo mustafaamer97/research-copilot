@@ -1,1 +1,1 @@
-undefined
+"""Literature tests package."""
