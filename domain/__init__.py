@@ -1,4 +1,5 @@
 """Domain public API."""
+
 from domain.actors import ActorType
 from domain.framework import (
     Comparator,
