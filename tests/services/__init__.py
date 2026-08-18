@@ -1,1 +1,1 @@
-undefined
+"""Service tests package."""
