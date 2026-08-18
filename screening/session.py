@@ -7,19 +7,23 @@ ScreeningSession owns:
 - ScreeningWorkspace
 - ScreeningHistory  (Task 17: audit trail of explicit decision changes)
 
-The session delegates screening operations to ScreeningWorkspace.
-History is recorded explicitly via record_decision_change().
+Task 18: ScreeningSession.decide()
+    Atomically updates the workspace decision and records the history entry.
+    The researcher calls decide() once; the session ensures consistency.
+
 No AI. No external APIs.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import List
+from datetime import datetime, timezone
+from typing import Optional
 
 from screening.criteria import ScreeningCriteria
+from screening.decision import ScreeningDecision
 from screening.history import ScreeningDecisionHistoryEntry, ScreeningHistory
-from screening.workspace import ScreeningWorkspace
+from screening.workspace import ScreeningRecordNotFoundError, ScreeningWorkspace
 
 
 class ScreeningSession:
@@ -35,15 +39,16 @@ class ScreeningSession:
     Responsibilities:
     - Delegates workspace operations to ScreeningWorkspace.
     - Records explicit researcher decision changes via record_decision_change().
-    - Does NOT auto-generate history entries.
-    - Does NOT modify ScreeningWorkspace internals.
+    - Provides decide() to atomically update workspace + history in one call.
+    - Does NOT auto-generate history entries outside of decide().
+    - Does NOT modify ScreeningWorkspace internals directly.
     """
 
     def __init__(
         self,
         criteria: ScreeningCriteria,
         workspace: ScreeningWorkspace,
-        session_id: str | None = None,
+        session_id: Optional[str] = None,
     ) -> None:
         if not isinstance(criteria, ScreeningCriteria):
             raise TypeError(
@@ -96,8 +101,7 @@ class ScreeningSession:
         """
         Record an explicit researcher decision change into the session history.
 
-        The caller is responsible for constructing the ScreeningDecisionHistoryEntry
-        with the correct previous_decision, new_decision, changed_by, and changed_at.
+        The caller is responsible for constructing the ScreeningDecisionHistoryEntry.
 
         This method does NOT call set_decision() on the workspace.
         It does NOT auto-generate entries.
@@ -108,6 +112,82 @@ class ScreeningSession:
         """
         if not isinstance(entry, ScreeningDecisionHistoryEntry):
             raise TypeError(
-                f"Expected ScreeningDecisionHistoryEntry, got {type(entry).__name__}."
+                f"Expected ScreeningDecisionHistoryEntry, "
+                f"got {type(entry).__name__}."
             )
         self._history.record(entry)
+
+    # ------------------------------------------------------------------
+    # Coordinated decision — Task 18
+    # ------------------------------------------------------------------
+
+    def decide(
+        self,
+        literature_record_id: str,
+        new_decision: ScreeningDecision,
+        changed_by: str,
+        reason: Optional[str] = None,
+        notes: Optional[str] = None,
+    ) -> ScreeningDecisionHistoryEntry:
+        """
+        Apply a researcher screening decision atomically.
+
+        Steps (in order):
+        1. Retrieve the current ScreeningRecord from the workspace.
+        2. Reject if new_decision == current decision (no-op).
+        3. Apply new_decision to the workspace via set_decision().
+        4. Construct a ScreeningDecisionHistoryEntry.
+        5. Record the entry into session history.
+        6. Return the entry.
+
+        Args:
+            literature_record_id: The stable ID of the literature record.
+            new_decision: The researcher's new decision.
+            changed_by: Identifier of the researcher making the decision.
+            reason: Optional reason for the decision.
+            notes: Optional additional notes.
+
+        Returns:
+            The ScreeningDecisionHistoryEntry that was recorded.
+
+        Raises:
+            ScreeningRecordNotFoundError: if the record is not in the workspace.
+            ValueError: if new_decision == current decision (no change).
+            TypeError: if new_decision is not a ScreeningDecision.
+            ValueError: if changed_by is empty.
+        """
+        if not isinstance(new_decision, ScreeningDecision):
+            raise TypeError(
+                f"Expected ScreeningDecision, got {type(new_decision).__name__}."
+            )
+
+        # Step 1: retrieve current record (raises ScreeningRecordNotFoundError if missing)
+        record = self._workspace.get(literature_record_id)
+        previous_decision = record.decision
+
+        # Step 2: reject no-op
+        if previous_decision == new_decision:
+            raise ValueError(
+                f"Decision did not change for record '{literature_record_id}': "
+                f"current decision is already '{new_decision.value}'."
+            )
+
+        # Step 3: apply to workspace
+        self._workspace.set_decision(literature_record_id, new_decision)
+
+        # Step 4: construct history entry
+        entry = ScreeningDecisionHistoryEntry(
+            literature_record_id=literature_record_id,
+            previous_decision=previous_decision,
+            new_decision=new_decision,
+            changed_at=datetime.now(tz=timezone.utc),
+            changed_by=changed_by,
+            reason=reason,
+            notes=notes,
+        )
+
+        # Step 5: record into history
+        self._history.record(entry)
+
+        # Step 6: return entry
+        return entry
