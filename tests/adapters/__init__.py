@@ -1,1 +1,1 @@
-undefined
+"""Adapter test package."""
