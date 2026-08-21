@@ -3,7 +3,6 @@ import asyncio
 from adapters.pubmed import PubMedAdapter
 from adapters.europe_pmc import EuropePMCAdapter
 from adapters.openalex import OpenAlexAdapter
-from literature.deduplication import Deduplicator
 
 # إعدادات الصفحة والتصميم
 st.set_page_config(
@@ -13,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🔬 Research Copilot - المساعد البحثي الطبي")
-st.markdown("مرحباً بك! يمكنك البحث في قواعد البيانات الطبية العالمية (PubMed, Europe PMC, OpenAlex) وتصفيات النتائج بسهولة.")
+st.markdown("مرحباً بك! يمكنك البحث في قواعد البيانات الطبية العالمية (PubMed, Europe PMC, OpenAlex) بسهولة.")
 
 # القائمة الجانبية للخيارات
 st.sidebar.header("إعدادات البحث")
@@ -34,9 +33,7 @@ if st.button("بدء البحث الجمعي 🚀", type="primary"):
     else:
         st.info(f"جاري البحث عن: **{query}** ...")
         
-        results = []
-        
-        # دالة البحث
+        # دالة جلب الأبحاث
         async def fetch_all():
             all_articles = []
             if "PubMed" in selected_sources:
@@ -66,7 +63,7 @@ if st.button("بدء البحث الجمعي 🚀", type="primary"):
             return all_articles
 
         # تشغيل البحث
-        with st.spinner("جاري جلب الأبحاث وتصفيتها..."):
+        with st.spinner("جاري جلب الأبحاث..."):
             fetched_articles = asyncio.run(fetch_all())
             
             if fetched_articles:
@@ -82,4 +79,4 @@ if st.button("بدء البحث الجمعي 🚀", type="primary"):
                         st.write(f"**DOI:** {doi}")
                         st.write(f"**الملخص:** {abstract}")
             else:
-                st.warning("لم يتم العثور على نتائج طابق هذا البحث.")
+                st.warning("لم يتم العثور على نتائج تطابق هذا البحث.")
