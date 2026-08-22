@@ -25,8 +25,11 @@ class EvidenceExtraction(BaseModel):
     pmid: str | None = None
 
     population: str | None = None
+
     intervention: str | None = None
+
     comparator: str | None = None
+
     outcome: str | None = None
 
     study_design: str | None = None
