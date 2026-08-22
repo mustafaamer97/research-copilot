@@ -1,10 +1,14 @@
 import streamlit as st
 
-from literature.orchestrator import LiteratureSearchOrchestrator
 from adapters.pubmed import PubMedAdapter
 from adapters.europe_pmc import EuropePMCAdapter
 from adapters.openalex import OpenAlexAdapter
 from adapters.crossref import CrossrefAdapter
+
+from domain.literature_search import LiteratureSearchStrategy
+from domain.framework import FrameworkType
+
+from literature.orchestrator import LiteratureSearchOrchestrator
 
 
 st.set_page_config(
@@ -14,92 +18,132 @@ st.set_page_config(
 )
 
 
-def build_adapters():
-    """Create the available literature adapters."""
+# ============================================================
+# Helpers
+# ============================================================
 
-    return {
-        "PubMed": PubMedAdapter(),
-        "Europe PMC": EuropePMCAdapter(),
-        "OpenAlex": OpenAlexAdapter(),
-        "Crossref": CrossrefAdapter(),
-    }
+def create_search_strategy(query: str) -> LiteratureSearchStrategy:
+    """
+    Convert the researcher's text query into the canonical
+    LiteratureSearchStrategy used by all literature adapters.
+    """
+
+    return LiteratureSearchStrategy(
+        framework_type=FrameworkType.PICO,
+        boolean_query=query.strip(),
+    )
 
 
-def get_value(obj, *names, default=None):
-    """Safely retrieve an attribute from an object."""
+def get_article_value(article, *names, default=None):
+    """Safely read a value from a ResearchArticle."""
 
     for name in names:
-        if hasattr(obj, name):
-            value = getattr(obj, name)
+        if hasattr(article, name):
+            value = getattr(article, name)
+
             if value is not None:
                 return value
 
     return default
 
 
-def render_article(article, index):
-    """Render one literature article."""
+def render_article(article, index: int) -> None:
+    """Render one ResearchArticle."""
 
-    title = get_value(
+    title = get_article_value(
         article,
         "title",
         default="Untitled article",
     )
 
-    st.markdown(f"### {index}. {title}")
+    authors = get_article_value(
+        article,
+        "authors",
+        default=[],
+    )
 
-    authors = get_value(article, "authors")
+    journal = get_article_value(
+        article,
+        "journal",
+        default=None,
+    )
+
+    publication_date = get_article_value(
+        article,
+        "publication_date",
+        default=None,
+    )
+
+    doi = get_article_value(
+        article,
+        "doi",
+        default=None,
+    )
+
+    pmid = get_article_value(
+        article,
+        "pmid",
+        default=None,
+    )
+
+    abstract = get_article_value(
+        article,
+        "abstract",
+        default=None,
+    )
+
+    url = get_article_value(
+        article,
+        "url",
+        "source_url",
+        default=None,
+    )
+
+    st.markdown(
+        f"### {index}. {title}"
+    )
 
     if authors:
+
         if isinstance(authors, (list, tuple)):
-            authors_text = ", ".join(str(author) for author in authors)
+            authors_text = ", ".join(
+                str(author)
+                for author in authors
+            )
         else:
             authors_text = str(authors)
 
-        st.write(f"**Authors:** {authors_text}")
-
-    journal = get_value(
-        article,
-        "journal",
-        "journal_name",
-    )
+        st.write(
+            f"**Authors:** {authors_text}"
+        )
 
     if journal:
-        st.write(f"**Journal:** {journal}")
-
-    publication_date = get_value(
-        article,
-        "publication_date",
-        "published_date",
-        "date",
-    )
+        st.write(
+            f"**Journal:** {journal}"
+        )
 
     if publication_date:
-        st.write(f"**Publication date:** {publication_date}")
-
-    doi = get_value(article, "doi")
+        st.write(
+            f"**Publication date:** {publication_date}"
+        )
 
     if doi:
-        st.write(f"**DOI:** {doi}")
-
-    pmid = get_value(article, "pmid")
+        st.write(
+            f"**DOI:** {doi}"
+        )
 
     if pmid:
-        st.write(f"**PMID:** {pmid}")
-
-    abstract = get_value(article, "abstract")
+        st.write(
+            f"**PMID:** {pmid}"
+        )
 
     if abstract:
+
         with st.expander("Abstract"):
             st.write(abstract)
 
-    url = get_value(
-        article,
-        "url",
-        "link",
-    )
-
     if url:
+
         st.link_button(
             "Open article",
             url,
@@ -108,8 +152,77 @@ def render_article(article, index):
     st.divider()
 
 
+def deduplicate_articles(articles):
+    """
+    Remove duplicate articles using DOI, PMID,
+    then title as fallback.
+    """
+
+    unique_articles = []
+    seen = set()
+
+    for article in articles:
+
+        doi = get_article_value(
+            article,
+            "doi",
+        )
+
+        pmid = get_article_value(
+            article,
+            "pmid",
+        )
+
+        title = get_article_value(
+            article,
+            "title",
+        )
+
+        if doi:
+
+            key = (
+                "doi:",
+                str(doi).strip().lower(),
+            )
+
+        elif pmid:
+
+            key = (
+                "pmid:",
+                str(pmid).strip().lower(),
+            )
+
+        elif title:
+
+            key = (
+                "title:",
+                str(title).strip().lower(),
+            )
+
+        else:
+
+            unique_articles.append(article)
+            continue
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        unique_articles.append(article)
+
+    return unique_articles
+
+
+# ============================================================
+# Streamlit UI
+# ============================================================
+
 def main():
-    st.title("🔬 Research Copilot")
+
+    st.title(
+        "🔬 Research Copilot"
+    )
 
     st.caption(
         "Medical Research Assistant — Literature Search"
@@ -120,7 +233,13 @@ def main():
         "the researcher's scientific judgment."
     )
 
-    st.sidebar.header("Search settings")
+    # --------------------------------------------------------
+    # Sidebar
+    # --------------------------------------------------------
+
+    st.sidebar.header(
+        "Search settings"
+    )
 
     selected_sources = st.sidebar.multiselect(
         "Literature sources",
@@ -136,18 +255,14 @@ def main():
         ],
     )
 
-    max_results = st.sidebar.number_input(
-        "Maximum results per source",
-        min_value=1,
-        max_value=100,
-        value=10,
-        step=1,
-    )
-
     deduplicate = st.sidebar.checkbox(
         "Remove duplicate articles",
         value=True,
     )
+
+    # --------------------------------------------------------
+    # Query
+    # --------------------------------------------------------
 
     query = st.text_area(
         "Research question / search query",
@@ -164,7 +279,12 @@ def main():
         use_container_width=True,
     )
 
+    # --------------------------------------------------------
+    # Initial screen
+    # --------------------------------------------------------
+
     if not search_clicked:
+
         st.markdown(
             """
             ## Start your literature search
@@ -180,7 +300,12 @@ def main():
 
         return
 
+    # --------------------------------------------------------
+    # Validation
+    # --------------------------------------------------------
+
     if not query.strip():
+
         st.warning(
             "Please enter a research question or search query."
         )
@@ -188,127 +313,172 @@ def main():
         return
 
     if not selected_sources:
+
         st.warning(
             "Please select at least one literature source."
         )
 
         return
 
-    adapters = build_adapters()
+    # --------------------------------------------------------
+    # Create strategy
+    # --------------------------------------------------------
 
-    selected_adapters = [
-        adapters[source]
-        for source in selected_sources
-    ]
+    strategy = create_search_strategy(
+        query
+    )
 
-    try:
-        orchestrator = LiteratureSearchOrchestrator(
-            adapters=selected_adapters
-        )
-    except TypeError:
+    # --------------------------------------------------------
+    # Create adapters
+    # --------------------------------------------------------
+
+    adapter_classes = {
+        "PubMed": PubMedAdapter,
+        "Europe PMC": EuropePMCAdapter,
+        "OpenAlex": OpenAlexAdapter,
+        "Crossref": CrossrefAdapter,
+    }
+
+    adapters = []
+
+    for source_name in selected_sources:
+
+        adapter_class = adapter_classes[
+            source_name
+        ]
+
         try:
-            orchestrator = LiteratureSearchOrchestrator(
-                selected_adapters
-            )
+
+            adapter = adapter_class()
+
+            adapters.append(adapter)
+
         except Exception as exc:
+
             st.error(
-                f"Could not initialize literature search: {exc}"
+                f"Could not initialize "
+                f"{source_name}: {exc}"
             )
-            return
 
-    with st.spinner("Searching the literature..."):
+    if not adapters:
+
+        st.error(
+            "No literature source could be initialized."
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Search
+    # --------------------------------------------------------
+
+    with st.spinner(
+        "Searching the literature..."
+    ):
 
         try:
-            result = orchestrator.search(
-                query=query.strip(),
-                max_results=max_results,
+
+            orchestrator = (
+                LiteratureSearchOrchestrator(
+                    adapters=adapters
+                )
             )
 
-        except TypeError:
-
-            try:
-                result = orchestrator.search(
-                    query.strip(),
-                    max_results,
-                )
-
-            except Exception as exc:
-                st.error(
-                    f"Literature search failed: {exc}"
-                )
-                return
+            collection = orchestrator.search(
+                strategy
+            )
 
         except Exception as exc:
+
             st.error(
                 f"Literature search failed: {exc}"
             )
+
+            st.exception(exc)
+
             return
 
-    if result is None:
-        st.warning(
-            "No result was returned."
-        )
-        return
+    # --------------------------------------------------------
+    # Results
+    # --------------------------------------------------------
 
-    if isinstance(result, (list, tuple)):
-        articles = list(result)
-
-    else:
-        articles = get_value(
-            result,
-            "articles",
-            "records",
-            "results",
-            default=[],
-        )
-
-        if articles is None:
-            articles = []
-
-        articles = list(articles)
+    articles = collection.all_records
 
     if deduplicate:
-        unique_articles = []
-        seen = set()
 
-        for article in articles:
+        articles = deduplicate_articles(
+            articles
+        )
 
-            doi = get_value(article, "doi")
-            pmid = get_value(article, "pmid")
-            title = get_value(article, "title")
-
-            if doi:
-                key = f"doi:{str(doi).strip().lower()}"
-
-            elif pmid:
-                key = f"pmid:{str(pmid).strip().lower()}"
-
-            elif title:
-                key = (
-                    f"title:"
-                    f"{str(title).strip().lower()}"
-                )
-
-            else:
-                key = None
-
-            if key is None:
-                unique_articles.append(article)
-                continue
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-            unique_articles.append(article)
-
-        articles = unique_articles
+    # --------------------------------------------------------
+    # Search summary
+    # --------------------------------------------------------
 
     st.success(
-        f"Found {len(articles)} article(s)."
+        f"Search completed — "
+        f"{len(articles)} article(s) available."
     )
 
+    # --------------------------------------------------------
+    # Source results
+    # --------------------------------------------------------
+
+    st.subheader(
+        "Search summary"
+    )
+
+    summary_columns = st.columns(
+        len(selected_sources)
+    )
+
+    for column, source_name in zip(
+        summary_columns,
+        selected_sources,
+    ):
+
+        source_results = [
+            result
+            for result in collection.results
+            if result.source.value == source_name
+            or result.source.name == source_name.upper().replace(
+                " ",
+                "_",
+            )
+        ]
+
+        count = sum(
+            len(result.records)
+            for result in source_results
+        )
+
+        column.metric(
+            source_name,
+            count,
+        )
+
+    # --------------------------------------------------------
+    # Failures
+    # --------------------------------------------------------
+
+    if collection.failures:
+
+        with st.expander(
+            "⚠️ Sources with errors"
+        ):
+
+            for failure in collection.failures:
+
+                st.warning(
+                    f"{failure.adapter_name}: "
+                    f"{failure.error}"
+                )
+
+    # --------------------------------------------------------
+    # Empty result
+    # --------------------------------------------------------
+
     if not articles:
+
         st.info(
             "No articles were found. "
             "Try a broader or differently worded query."
@@ -316,12 +486,19 @@ def main():
 
         return
 
-    st.header("Literature results")
+    # --------------------------------------------------------
+    # Render
+    # --------------------------------------------------------
+
+    st.subheader(
+        "Literature results"
+    )
 
     for index, article in enumerate(
         articles,
         start=1,
     ):
+
         render_article(
             article,
             index,
