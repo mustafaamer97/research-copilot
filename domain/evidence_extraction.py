@@ -25,16 +25,21 @@ class EvidenceExtraction(BaseModel):
     pmid: str | None = None
 
     population: str | None = None
-
     intervention: str | None = None
-
     comparator: str | None = None
-
     outcome: str | None = None
 
     study_design: str | None = None
 
     risk_of_bias: RiskOfBias | None = None
+
+    sample_size: int | None = None
+
+    funding_source: str | None = None
+
+    conflict_of_interest: str | None = None
+
+    follow_up_duration: str | None = None
 
     notes: str | None = None
 
