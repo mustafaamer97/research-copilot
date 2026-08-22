@@ -695,12 +695,13 @@ def main():
     # Tabs
     # --------------------------------------------------------
 
-    tab_all, tab_included, tab_excluded, tab_maybe = st.tabs(
+    tab_all, tab_included, tab_excluded, tab_maybe, tab_prisma = st.tabs(
         [
-            "📄 All",
-            "✅ Included",
-            "❌ Excluded",
-            "🟡 Maybe",
+            "All Results",
+            "Included",
+            "Excluded",
+            "Maybe",
+            "PRISMA",
         ]
     )
 
@@ -1118,6 +1119,75 @@ def main():
                     st.rerun()
 
                 st.divider()
+
+    # --------------------------------------------------------
+    # PRISMA Diagram
+    # --------------------------------------------------------
+
+    with tab_prisma:
+
+        st.subheader("📊 PRISMA 2020 Flow Diagram")
+
+        total_records = len(raw_articles)
+        dedup_records = len(deduplicated_articles)
+        duplicates_removed = total_records - dedup_records
+
+        p_inc = included_count
+        p_exc = excluded_count
+        p_myb = maybe_count
+        p_screened = screened_count
+        p_unscreened = len(articles) - p_screened
+
+        # Breakdown exclusion reasons
+        reasons_map = {}
+        for item in st.session_state.screening_decisions.values():
+            if item.get("decision") == "Exclude" and item.get("reason"):
+                r = item["reason"]
+                reasons_map[r] = reasons_map.get(r, 0) + 1
+
+        reasons_str = "\\n".join([f"• {k}: {v}" for k, v in reasons_map.items()])
+        if not reasons_str:
+            reasons_str = "• Specified reasons will appear here"
+
+        prisma_graph = f"""
+        digraph PRISMA {{
+            graph [rankdir=TB, nodesep=0.5, ranksep=0.5, fontname="Helvetica"];
+            node [shape=box, style="filled,rounded", fillcolor="#F8F9FA", color="#1E88E5", fontname="Helvetica", fontsize=10];
+            edge [fontname="Helvetica", fontsize=9, color="#555555"];
+
+            subgraph cluster_identification {{
+                label = "Identification";
+                style = dashed;
+                color = "#9E9E9E";
+                node1 [label="Records identified from databases\\n(n = {total_records})"];
+                node_dedup [label="Duplicate records removed\\n(n = {duplicates_removed})", fillcolor="#FFF3E0", color="#FB8C00"];
+            }}
+
+            subgraph cluster_screening {{
+                label = "Screening";
+                style = dashed;
+                color = "#9E9E9E";
+                node2 [label="Records screened\\n(n = {p_screened})"];
+                node3 [label="Records excluded (n = {p_exc})\\n\\n{reasons_str}", fillcolor="#FFEBEE", color="#E53935"];
+                node4 [label="Records awaiting assessment / Maybe\\n(n = {p_myb + p_unscreened})", fillcolor="#FFFDE7", color="#FBC02D"];
+            }}
+
+            subgraph cluster_included {{
+                label = "Included";
+                style = dashed;
+                color = "#9E9E9E";
+                node5 [label="Studies included in review\\n(n = {p_inc})", fillcolor="#E8F5E9", color="#43A047"];
+            }}
+
+            node1 -> node_dedup;
+            node_dedup -> node2;
+            node2 -> node3 [label=" Excluded"];
+            node2 -> node4 [label=" Pending"];
+            node2 -> node5 [label=" Included"];
+        }}
+        """
+
+        st.graphviz_chart(prisma_graph, use_container_width=True)
 
 
 if __name__ == "__main__":
