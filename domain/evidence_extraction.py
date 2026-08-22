@@ -14,17 +14,15 @@ class RiskOfBias(str, Enum):
 
 
 class EvidenceExtraction(BaseModel):
-    """
-    Canonical evidence extraction record.
-
-    One extraction record belongs to one included article.
-    """
 
     model_config = {"frozen": True}
 
     id: UUID = Field(default_factory=uuid4)
 
     article_id: UUID
+
+    doi: str | None = None
+    pmid: str | None = None
 
     population: str | None = None
 
@@ -41,5 +39,7 @@ class EvidenceExtraction(BaseModel):
     notes: str | None = None
 
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(
+            timezone.utc
+        )
     )
