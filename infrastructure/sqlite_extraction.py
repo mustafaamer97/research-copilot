@@ -33,6 +33,14 @@ def initialize_database():
 
             risk_of_bias TEXT,
 
+            sample_size INTEGER,
+
+            funding_source TEXT,
+
+            conflict_of_interest TEXT,
+
+            follow_up_duration TEXT,
+
             notes TEXT,
 
             updated_at TEXT
@@ -69,12 +77,20 @@ def save_extraction(
 
             risk_of_bias,
 
+            sample_size,
+
+            funding_source,
+
+            conflict_of_interest,
+
+            follow_up_duration,
+
             notes,
 
             updated_at
         )
         VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
         """,
         (
@@ -93,6 +109,14 @@ def save_extraction(
             extraction.risk_of_bias.value
             if extraction.risk_of_bias
             else None,
+
+            extraction.sample_size,
+
+            extraction.funding_source,
+
+            extraction.conflict_of_interest,
+
+            extraction.follow_up_duration,
 
             extraction.notes,
 
@@ -126,6 +150,14 @@ def load_extraction(
 
             risk_of_bias,
 
+            sample_size,
+
+            funding_source,
+
+            conflict_of_interest,
+
+            follow_up_duration,
+
             notes
 
         FROM evidence_extractions
@@ -148,7 +180,11 @@ def load_extraction(
         "outcome": row[5],
         "study_design": row[6],
         "risk_of_bias": row[7],
-        "notes": row[8],
+        "sample_size": row[8],
+        "funding_source": row[9],
+        "conflict_of_interest": row[10],
+        "follow_up_duration": row[11],
+        "notes": row[12],
     }
 
 
