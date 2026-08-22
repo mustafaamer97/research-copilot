@@ -1157,29 +1157,47 @@ def main():
             + maybe
         )
 
-        c1, c2 = st.columns(2)
+        st.markdown("## PRISMA Flow Diagram")
 
-        with c1:
-            st.metric(
-                "Records Identified",
-                identified,
-            )
+        st.info(
+            f"""
+            **Identification**
 
-            st.metric(
-                "Records Screened",
-                screened,
-            )
+            Records Identified
+            (n = {identified})
+            """
+        )
 
-        with c2:
-            st.metric(
-                "Records Excluded",
-                excluded,
-            )
+        st.markdown("⬇️")
 
-            st.metric(
-                "Studies Included",
-                included,
-            )
+        st.info(
+            f"""
+            **Screening**
+
+            Records Screened
+            (n = {screened})
+            """
+        )
+
+        st.markdown("⬇️")
+
+        st.error(
+            f"""
+            **Records Excluded**
+
+            (n = {excluded})
+            """
+        )
+
+        st.markdown("⬇️")
+
+        st.success(
+            f"""
+            **Studies Included**
+
+            (n = {included})
+            """
+        )
 
 
 if __name__ == "__main__":
