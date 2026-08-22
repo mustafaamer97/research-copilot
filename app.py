@@ -605,14 +605,10 @@ def main():
         return
 
     # --------------------------------------------------------
-    # Results + Screening MVP
+    # Screening Dashboard
     # --------------------------------------------------------
 
     st.markdown("---")
-
-    st.subheader(
-        "Screening Progress"
-    )
 
     included_count = sum(
         1
@@ -632,100 +628,187 @@ def main():
         if value["decision"] == "Maybe"
     )
 
+    screened_count = len(
+        st.session_state.screening_decisions
+    )
+
     remaining_count = max(
         0,
-        len(articles)
-        - len(st.session_state.screening_decisions)
+        len(articles) - screened_count
     )
 
-    c1, c2, c3, c4 = st.columns(4)
+    completion_percent = round(
+        (screened_count / len(articles)) * 100,
+        1,
+    ) if articles else 0
 
-    c1.metric("Included", included_count)
-    c2.metric("Excluded", excluded_count)
-    c3.metric("Maybe", maybe_count)
-    c4.metric("Remaining", remaining_count)
+    st.subheader("Screening Dashboard")
 
-    st.markdown("---")
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
 
-    st.subheader(
-        "Literature results"
+    c1.metric("Total", len(articles))
+    c2.metric("Screened", screened_count)
+    c3.metric("Included", included_count)
+    c4.metric("Excluded", excluded_count)
+    c5.metric("Maybe", maybe_count)
+    c6.metric("Remaining", remaining_count)
+
+    st.progress(
+        completion_percent / 100
     )
 
-    for index, article in enumerate(
-        articles,
-        start=1,
-    ):
-        render_article(
-            article,
-            index,
-        )
+    st.caption(
+        f"Completion: {completion_percent}%"
+    )
 
-        article_key = f"article_{index}"
+    # --------------------------------------------------------
+    # Tabs
+    # --------------------------------------------------------
 
-        existing = (
-            st.session_state
-            .screening_decisions
-            .get(article_key)
-        )
+    tab_all, tab_included, tab_excluded, tab_maybe = st.tabs(
+        [
+            "📄 All",
+            "✅ Included",
+            "❌ Excluded",
+            "🟡 Maybe",
+        ]
+    )
 
-        decision = st.radio(
-            f"Decision #{index}",
-            [
-                "Include",
-                "Exclude",
-                "Maybe",
-            ],
-            key=f"decision_{index}",
-            index=None,
-        )
+    # --------------------------------------------------------
+    # All Studies
+    # --------------------------------------------------------
 
-        exclusion_reason = None
+    with tab_all:
 
-        if decision == "Exclude":
-            exclusion_reason = st.selectbox(
-                f"Reason #{index}",
-                [
-                    "Wrong Population",
-                    "Wrong Intervention",
-                    "Wrong Outcome",
-                    "Wrong Study Design",
-                    "Animal Study",
-                    "Not Original Research",
-                    "Other",
-                ],
-                key=f"reason_{index}",
-            )
-
-        if st.button(
-            f"Save Decision #{index}",
-            key=f"save_{index}",
+        for index, article in enumerate(
+            articles,
+            start=1,
         ):
-            st.session_state.screening_decisions[
-                article_key
-            ] = {
-                "decision": decision,
-                "reason": exclusion_reason,
-            }
 
-            st.success(
-                "Decision saved."
+            render_article(
+                article,
+                index,
             )
 
-        if existing:
-            message = (
-                f"Saved Decision: "
-                f"{existing['decision']}"
+            article_key = f"article_{index}"
+
+            existing = (
+                st.session_state
+                .screening_decisions
+                .get(article_key)
             )
 
-            if existing["reason"]:
-                message += (
-                    f" | Reason: "
-                    f"{existing['reason']}"
+            decision = st.radio(
+                f"Decision #{index}",
+                [
+                    "Include",
+                    "Exclude",
+                    "Maybe",
+                ],
+                key=f"decision_{index}",
+                index=None,
+            )
+
+            exclusion_reason = None
+
+            if decision == "Exclude":
+
+                exclusion_reason = st.selectbox(
+                    f"Reason #{index}",
+                    [
+                        "Wrong Population",
+                        "Wrong Intervention",
+                        "Wrong Outcome",
+                        "Wrong Study Design",
+                        "Animal Study",
+                        "Not Original Research",
+                        "Other",
+                    ],
+                    key=f"reason_{index}",
                 )
 
-            st.info(message)
+            if st.button(
+                f"Save Decision #{index}",
+                key=f"save_{index}",
+            ):
 
-        st.divider()
+                st.session_state.screening_decisions[
+                    article_key
+                ] = {
+                    "decision": decision,
+                    "reason": exclusion_reason,
+                }
+
+                st.rerun()
+
+            if existing:
+
+                message = (
+                    f"Saved Decision: "
+                    f"{existing['decision']}"
+                )
+
+                if existing["reason"]:
+
+                    message += (
+                        f" | Reason: "
+                        f"{existing['reason']}"
+                    )
+
+                st.info(message)
+
+            st.divider()
+
+    # --------------------------------------------------------
+    # Included
+    # --------------------------------------------------------
+
+    with tab_included:
+
+        for key, value in (
+            st.session_state
+            .screening_decisions
+            .items()
+        ):
+
+            if value["decision"] == "Include":
+
+                st.success(key)
+
+    # --------------------------------------------------------
+    # Excluded
+    # --------------------------------------------------------
+
+    with tab_excluded:
+
+        for key, value in (
+            st.session_state
+            .screening_decisions
+            .items()
+        ):
+
+            if value["decision"] == "Exclude":
+
+                st.error(
+                    f"{key} | "
+                    f"{value['reason']}"
+                )
+
+    # --------------------------------------------------------
+    # Maybe
+    # --------------------------------------------------------
+
+    with tab_maybe:
+
+        for key, value in (
+            st.session_state
+            .screening_decisions
+            .items()
+        ):
+
+            if value["decision"] == "Maybe":
+
+                st.warning(key)
 
 
 if __name__ == "__main__":
