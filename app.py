@@ -454,13 +454,15 @@ def main():
 
     if deduplicate:
 
-        articles = deduplicate_articles(
-            raw_articles
+        deduplicated_articles = (
+            deduplicate_articles(
+                raw_articles
+            )
         )
 
     else:
 
-        articles = raw_articles
+        deduplicated_articles = raw_articles
 
     # --------------------------------------------------------
     # FINAL LIMIT
@@ -470,7 +472,7 @@ def main():
     # maximum result count.
     # --------------------------------------------------------
 
-    articles = articles[
+    articles = deduplicated_articles[
         : int(max_results)
     ]
 
@@ -543,7 +545,7 @@ def main():
 
         st.write(
             f"After deduplication: "
-            f"{len(articles)}"
+            f"{len(deduplicated_articles)}"
         )
 
         st.write(
