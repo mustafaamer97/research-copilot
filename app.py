@@ -780,6 +780,26 @@ def main():
                 else:
                     st.success(key)
 
+                st.success("Current Decision: Include")
+
+                c1, c2 = st.columns(2)
+
+                if c1.button(
+                    f"Move To Exclude #{idx}",
+                    key=f"inc_to_exc_{idx}",
+                ):
+                    value["decision"] = "Exclude"
+                    value["reason"] = "Changed During Review"
+                    st.rerun()
+
+                if c2.button(
+                    f"Move To Maybe #{idx}",
+                    key=f"inc_to_maybe_{idx}",
+                ):
+                    value["decision"] = "Maybe"
+                    value["reason"] = None
+                    st.rerun()
+
                 st.divider()
 
     # --------------------------------------------------------
@@ -795,7 +815,9 @@ def main():
 
             if value["decision"] == "Exclude":
 
-                st.error(f"Reason: {value['reason']}")
+                st.error(
+                    f"Reason: {value['reason']}"
+                )
 
                 art = value.get("article")
 
@@ -803,6 +825,24 @@ def main():
                     render_article(art, idx)
                 else:
                     st.write(key)
+
+                c1, c2 = st.columns(2)
+
+                if c1.button(
+                    f"Move To Include #{idx}",
+                    key=f"exc_to_inc_{idx}",
+                ):
+                    value["decision"] = "Include"
+                    value["reason"] = None
+                    st.rerun()
+
+                if c2.button(
+                    f"Move To Maybe #{idx}",
+                    key=f"exc_to_maybe_{idx}",
+                ):
+                    value["decision"] = "Maybe"
+                    value["reason"] = None
+                    st.rerun()
 
                 st.divider()
 
@@ -825,6 +865,26 @@ def main():
                     render_article(art, idx)
                 else:
                     st.warning(key)
+
+                st.warning("Current Decision: Maybe")
+
+                c1, c2 = st.columns(2)
+
+                if c1.button(
+                    f"Move To Include #{idx}",
+                    key=f"maybe_to_inc_{idx}",
+                ):
+                    value["decision"] = "Include"
+                    value["reason"] = None
+                    st.rerun()
+
+                if c2.button(
+                    f"Move To Exclude #{idx}",
+                    key=f"maybe_to_exc_{idx}",
+                ):
+                    value["decision"] = "Exclude"
+                    value["reason"] = "Changed During Review"
+                    st.rerun()
 
                 st.divider()
 
