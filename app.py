@@ -66,53 +66,32 @@ def get_value(obj, *names, default=None):
     return default
 
 
-def get_missing_fields(
-    extraction: dict,
-) -> list[str]:
-    """Check for missing required/essential fields in extraction data."""
+def get_missing_fields(extraction) -> list:
+    """
+    Check extracted data for missing critical/essential fields.
+    Supports both dict and EvidenceExtraction object/dataclass.
+    """
+    if extraction is None:
+        return ["No Extraction Data"]
+
+    required_fields = {
+        "population": "Population",
+        "intervention": "Intervention",
+        "outcome": "Outcome",
+        "study_design": "Study Design",
+        "risk_of_bias": "Risk of Bias",
+        "sample_size": "Sample Size",
+    }
 
     missing = []
+    for field_key, field_label in required_fields.items():
+        if isinstance(extraction, dict):
+            val = extraction.get(field_key)
+        else:
+            val = getattr(extraction, field_key, None)
 
-    if not extraction.get(
-        "population"
-    ):
-        missing.append(
-            "Population"
-        )
-
-    if not extraction.get(
-        "intervention"
-    ):
-        missing.append(
-            "Intervention"
-        )
-
-    if not extraction.get(
-        "outcome"
-    ):
-        missing.append(
-            "Outcome"
-        )
-
-    if not extraction.get(
-        "risk_of_bias"
-    ):
-        missing.append(
-            "Risk of Bias"
-        )
-
-    sample_size = extraction.get(
-        "sample_size"
-    )
-
-    if sample_size in (
-        None,
-        0,
-        "",
-    ):
-        missing.append(
-            "Sample Size"
-        )
+        if val is None or val == "" or val == 0:
+            missing.append(field_label)
 
     return missing
 
@@ -747,13 +726,14 @@ def main():
     # Tabs
     # --------------------------------------------------------
 
-    tab_all, tab_included, tab_excluded, tab_maybe, tab_prisma = st.tabs(
+    tab_all, tab_included, tab_excluded, tab_maybe, tab_prisma, tab_dashboard = st.tabs(
         [
             "All Results",
             "Included",
             "Excluded",
             "Maybe",
             "PRISMA",
+            "Dashboard",
         ]
     )
 
@@ -907,25 +887,9 @@ def main():
                         )
 
                     if saved_extraction:
-
-                        missing = get_missing_fields(
-                            saved_extraction
+                        st.info(
+                            "Existing extraction loaded."
                         )
-
-                        if missing:
-
-                            st.warning(
-                                "Missing: "
-                                + ", ".join(
-                                    missing
-                                )
-                            )
-
-                        else:
-
-                            st.success(
-                                "Extraction Complete"
-                            )
 
                     population = st.text_area(
                         "Population",
@@ -1344,6 +1308,144 @@ def main():
             (n = {included})
             """
         )
+
+    # --------------------------------------------------------
+    # Extraction Dashboard
+    # --------------------------------------------------------
+
+    with tab_dashboard:
+
+        st.subheader("Data Extraction Overview")
+
+        complete_count = 0
+        incomplete_count = 0
+
+        incomplete_studies = []
+
+        for key, value in (
+            st.session_state
+            .screening_decisions
+            .items()
+        ):
+
+            if value["decision"] != "Include":
+                continue
+
+            article = value.get(
+                "article"
+            )
+
+            if article is None:
+                continue
+
+            article_id = str(
+                getattr(
+                    article,
+                    "id",
+                    getattr(
+                        article,
+                        "pmid",
+                        getattr(
+                            article,
+                            "doi",
+                            key,
+                        ),
+                    ),
+                )
+            )
+
+            extraction = load_extraction(
+                article_id
+            )
+
+            if extraction is None:
+
+                incomplete_count += 1
+
+                incomplete_studies.append(
+                    (
+                        getattr(article, "title", "Untitled Article"),
+                        ["No Extraction"]
+                    )
+                )
+
+                continue
+
+            missing = get_missing_fields(
+                extraction
+            )
+
+            if missing:
+
+                incomplete_count += 1
+
+                incomplete_studies.append(
+                    (
+                        getattr(article, "title", "Untitled Article"),
+                        missing,
+                    )
+                )
+
+            else:
+
+                complete_count += 1
+
+        total = (
+            complete_count
+            + incomplete_count
+        )
+
+        completion_rate = (
+            round(
+                complete_count
+                / total
+                * 100,
+                1,
+            )
+            if total > 0
+            else 0
+        )
+
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric(
+            "Complete",
+            complete_count,
+        )
+
+        c2.metric(
+            "Incomplete",
+            incomplete_count,
+        )
+
+        c3.metric(
+            "Completion %",
+            f"{completion_rate}%",
+        )
+
+        st.divider()
+
+        st.markdown(
+            "### Incomplete Studies"
+        )
+
+        if not incomplete_studies:
+
+            st.success(
+                "All included studies are complete."
+            )
+
+        else:
+
+            for title, missing in (
+                incomplete_studies
+            ):
+
+                st.warning(
+                    f"**{title}**\n\n"
+                    f"Missing: "
+                    f"{', '.join(missing)}"
+                )
 
 
 if __name__ == "__main__":
