@@ -66,6 +66,57 @@ def get_value(obj, *names, default=None):
     return default
 
 
+def get_missing_fields(
+    extraction: dict,
+) -> list[str]:
+    """Check for missing required/essential fields in extraction data."""
+
+    missing = []
+
+    if not extraction.get(
+        "population"
+    ):
+        missing.append(
+            "Population"
+        )
+
+    if not extraction.get(
+        "intervention"
+    ):
+        missing.append(
+            "Intervention"
+        )
+
+    if not extraction.get(
+        "outcome"
+    ):
+        missing.append(
+            "Outcome"
+        )
+
+    if not extraction.get(
+        "risk_of_bias"
+    ):
+        missing.append(
+            "Risk of Bias"
+        )
+
+    sample_size = extraction.get(
+        "sample_size"
+    )
+
+    if sample_size in (
+        None,
+        0,
+        "",
+    ):
+        missing.append(
+            "Sample Size"
+        )
+
+    return missing
+
+
 def render_article(article, index: int):
     """Render a single ResearchArticle."""
 
@@ -856,9 +907,25 @@ def main():
                         )
 
                     if saved_extraction:
-                        st.info(
-                            "Existing extraction loaded."
+
+                        missing = get_missing_fields(
+                            saved_extraction
                         )
+
+                        if missing:
+
+                            st.warning(
+                                "Missing: "
+                                + ", ".join(
+                                    missing
+                                )
+                            )
+
+                        else:
+
+                            st.success(
+                                "Extraction Complete"
+                            )
 
                     population = st.text_area(
                         "Population",
