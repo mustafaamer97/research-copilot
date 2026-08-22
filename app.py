@@ -10,6 +10,11 @@ from domain.framework import FrameworkType
 
 from literature.orchestrator import LiteratureSearchOrchestrator
 
+from infrastructure.sqlite_screening import (
+    initialize_database,
+    save_decision,
+)
+
 
 st.set_page_config(
     page_title="Research Copilot",
@@ -251,6 +256,8 @@ ADAPTER_CLASSES = {
 # ============================================================
 
 def main():
+
+    initialize_database()
 
     st.title(
         "🔬 Research Copilot"
@@ -739,6 +746,13 @@ def main():
                     "decision": decision,
                     "reason": exclusion_reason,
                 }
+
+                save_decision(
+                    article_key=article_key,
+                    article=article,
+                    decision=decision,
+                    reason=exclusion_reason,
+                )
 
                 st.rerun()
 
