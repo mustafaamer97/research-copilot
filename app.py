@@ -735,6 +735,7 @@ def main():
                 st.session_state.screening_decisions[
                     article_key
                 ] = {
+                    "article": article,
                     "decision": decision,
                     "reason": exclusion_reason,
                 }
@@ -765,15 +766,21 @@ def main():
 
     with tab_included:
 
-        for key, value in (
-            st.session_state
-            .screening_decisions
-            .items()
+        for idx, (key, value) in enumerate(
+            st.session_state.screening_decisions.items(),
+            start=1
         ):
 
             if value["decision"] == "Include":
 
-                st.success(key)
+                art = value.get("article")
+
+                if art:
+                    render_article(art, idx)
+                else:
+                    st.success(key)
+
+                st.divider()
 
     # --------------------------------------------------------
     # Excluded
@@ -781,18 +788,23 @@ def main():
 
     with tab_excluded:
 
-        for key, value in (
-            st.session_state
-            .screening_decisions
-            .items()
+        for idx, (key, value) in enumerate(
+            st.session_state.screening_decisions.items(),
+            start=1
         ):
 
             if value["decision"] == "Exclude":
 
-                st.error(
-                    f"{key} | "
-                    f"{value['reason']}"
-                )
+                st.error(f"Reason: {value['reason']}")
+
+                art = value.get("article")
+
+                if art:
+                    render_article(art, idx)
+                else:
+                    st.write(key)
+
+                st.divider()
 
     # --------------------------------------------------------
     # Maybe
@@ -800,15 +812,21 @@ def main():
 
     with tab_maybe:
 
-        for key, value in (
-            st.session_state
-            .screening_decisions
-            .items()
+        for idx, (key, value) in enumerate(
+            st.session_state.screening_decisions.items(),
+            start=1
         ):
 
             if value["decision"] == "Maybe":
 
-                st.warning(key)
+                art = value.get("article")
+
+                if art:
+                    render_article(art, idx)
+                else:
+                    st.warning(key)
+
+                st.divider()
 
 
 if __name__ == "__main__":
