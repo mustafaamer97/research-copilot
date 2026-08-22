@@ -11,9 +11,19 @@ from domain.framework import FrameworkType
 from literature.orchestrator import LiteratureSearchOrchestrator
 
 from infrastructure.sqlite_screening import (
-    initialize_database,
+    initialize_database as init_screening_db,
     save_decision,
     load_decisions,
+)
+
+from domain.evidence_extraction import (
+    EvidenceExtraction,
+    RiskOfBias,
+)
+
+from infrastructure.sqlite_extraction import (
+    initialize_database as init_extraction_db,
+    save_extraction,
 )
 
 
@@ -258,7 +268,8 @@ ADAPTER_CLASSES = {
 
 def main():
 
-    initialize_database()
+    init_screening_db()
+    init_extraction_db()
 
     if (
         "persisted_decisions_loaded"
@@ -922,25 +933,85 @@ def main():
 
                     if save_extraction_clicked:
 
-                        st.session_state[
-                            f"extraction_{key}"
-                        ] = {
-                            "population": population,
-                            "intervention": intervention,
-                            "comparator": comparator,
-                            "outcome": outcome,
-                            "study_design": study_design,
-                            "risk_of_bias": risk_of_bias,
-                            "sample_size": sample_size,
-                            "funding_source": funding_source,
-                            "conflict_of_interest": conflict_of_interest,
-                            "follow_up_duration": follow_up_duration,
-                            "notes": notes,
-                        }
+                        if not risk_of_bias:
 
-                        st.success(
-                            "Evidence extraction saved."
-                        )
+                            st.error(
+                                "Risk of Bias is required."
+                            )
+
+                        else:
+
+                            article_id = getattr(
+                                art,
+                                "id",
+                                getattr(
+                                    art,
+                                    "pmid",
+                                    getattr(
+                                        art,
+                                        "doi",
+                                        key,
+                                    ),
+                                ),
+                            )
+
+                            if article_id is None:
+
+                                st.error(
+                                    "Article ID not found."
+                                )
+
+                            else:
+
+                                extraction = EvidenceExtraction(
+                                    article_id=article_id,
+
+                                    doi=getattr(
+                                        art,
+                                        "doi",
+                                        None,
+                                    ),
+
+                                    pmid=getattr(
+                                        art,
+                                        "pmid",
+                                        None,
+                                    ),
+
+                                    population=population,
+
+                                    intervention=intervention,
+
+                                    comparator=comparator,
+
+                                    outcome=outcome,
+
+                                    study_design=study_design,
+
+                                    risk_of_bias=RiskOfBias(
+                                        risk_of_bias
+                                    ),
+
+                                    sample_size=int(
+                                        sample_size
+                                    ),
+
+                                    funding_source=funding_source,
+
+                                    conflict_of_interest=conflict_of_interest,
+
+                                    follow_up_duration=follow_up_duration,
+
+                                    notes=notes,
+                                )
+
+                                save_extraction(
+                                    extraction
+                                )
+
+                                st.success(
+                                    "Evidence extraction saved to SQLite."
+                                )
 
                 c1, c2 = st.columns(2)
 
