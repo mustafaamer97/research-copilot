@@ -24,6 +24,7 @@ from domain.evidence_extraction import (
 from infrastructure.sqlite_extraction import (
     initialize_database as init_extraction_db,
     save_extraction,
+    load_extraction,
 )
 
 
@@ -842,51 +843,102 @@ def main():
                     f"Evidence Extraction #{idx}"
                 ):
 
+                    saved_extraction = None
+
+                    if art is not None:
+
+                        article_id = str(
+                            getattr(art, "id", getattr(art, "pmid", getattr(art, "doi", key)))
+                        )
+
+                        saved_extraction = load_extraction(
+                            article_id
+                        )
+
+                    if saved_extraction:
+                        st.info(
+                            "Existing extraction loaded."
+                        )
+
                     population = st.text_area(
                         "Population",
+                        value=(
+                            saved_extraction["population"]
+                            if saved_extraction and "population" in saved_extraction
+                            else ""
+                        ),
                         key=f"population_{key}",
                     )
 
                     intervention = st.text_area(
                         "Intervention",
+                        value=(
+                            saved_extraction["intervention"]
+                            if saved_extraction and "intervention" in saved_extraction
+                            else ""
+                        ),
                         key=f"intervention_{key}",
                     )
 
                     comparator = st.text_area(
                         "Comparator",
+                        value=(
+                            saved_extraction["comparator"]
+                            if saved_extraction and "comparator" in saved_extraction
+                            else ""
+                        ),
                         key=f"comparator_{key}",
                     )
 
                     outcome = st.text_area(
                         "Outcome",
+                        value=(
+                            saved_extraction["outcome"]
+                            if saved_extraction and "outcome" in saved_extraction
+                            else ""
+                        ),
                         key=f"outcome_{key}",
                     )
 
+                    study_design_options = [
+                        "Randomized Controlled Trial (RCT)",
+                        "Non-Randomized Trial",
+                        "Cohort Study",
+                        "Case-Control Study",
+                        "Cross-Sectional Study",
+                        "Systematic Review",
+                        "Meta-Analysis",
+                        "Case Series",
+                        "Case Report",
+                        "Qualitative Study",
+                        "Other",
+                    ]
+
+                    default_sd_index = 0
+                    if saved_extraction and "study_design" in saved_extraction and saved_extraction["study_design"] in study_design_options:
+                        default_sd_index = study_design_options.index(saved_extraction["study_design"])
+
                     study_design = st.selectbox(
                         "Study Design",
-                        [
-                            "Randomized Controlled Trial (RCT)",
-                            "Non-Randomized Trial",
-                            "Cohort Study",
-                            "Case-Control Study",
-                            "Cross-Sectional Study",
-                            "Systematic Review",
-                            "Meta-Analysis",
-                            "Case Series",
-                            "Case Report",
-                            "Qualitative Study",
-                            "Other",
-                        ],
+                        study_design_options,
+                        index=default_sd_index,
                         key=f"study_design_{key}",
                     )
 
+                    rob_options = [
+                        "Low",
+                        "Some Concerns",
+                        "High",
+                    ]
+
+                    default_rob_index = 0
+                    if saved_extraction and "risk_of_bias" in saved_extraction and saved_extraction["risk_of_bias"] in rob_options:
+                        default_rob_index = rob_options.index(saved_extraction["risk_of_bias"])
+
                     risk_of_bias = st.selectbox(
                         "Risk of Bias *",
-                        [
-                            "Low",
-                            "Some Concerns",
-                            "High",
-                        ],
+                        rob_options,
+                        index=default_rob_index,
                         key=f"risk_of_bias_{key}",
                     )
 
@@ -894,32 +946,59 @@ def main():
                         "Sample Size *",
                         min_value=0,
                         step=1,
+                        value=(
+                            int(saved_extraction["sample_size"])
+                            if saved_extraction and "sample_size" in saved_extraction and saved_extraction["sample_size"] is not None
+                            else 0
+                        ),
                         key=f"sample_size_{key}",
                     )
 
                     funding_source = st.text_input(
                         "Funding Source",
+                        value=(
+                            saved_extraction["funding_source"]
+                            if saved_extraction and "funding_source" in saved_extraction
+                            else ""
+                        ),
                         key=f"funding_source_{key}",
                     )
 
+                    coi_options = [
+                        "Declared",
+                        "Not Declared",
+                        "Unclear",
+                    ]
+
+                    default_coi_index = 0
+                    if saved_extraction and "conflict_of_interest" in saved_extraction and saved_extraction["conflict_of_interest"] in coi_options:
+                        default_coi_index = coi_options.index(saved_extraction["conflict_of_interest"])
+
                     conflict_of_interest = st.selectbox(
                         "Conflict of Interest",
-                        [
-                            "Declared",
-                            "Not Declared",
-                            "Unclear",
-                        ],
+                        coi_options,
+                        index=default_coi_index,
                         key=f"conflict_of_interest_{key}",
                     )
 
                     follow_up_duration = st.text_input(
                         "Follow-up Duration",
                         placeholder="e.g. 12 months",
+                        value=(
+                            saved_extraction["follow_up_duration"]
+                            if saved_extraction and "follow_up_duration" in saved_extraction
+                            else ""
+                        ),
                         key=f"follow_up_duration_{key}",
                     )
 
                     notes = st.text_area(
                         "Notes",
+                        value=(
+                            saved_extraction["notes"]
+                            if saved_extraction and "notes" in saved_extraction
+                            else ""
+                        ),
                         key=f"notes_{key}",
                     )
 
