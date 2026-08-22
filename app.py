@@ -24,8 +24,8 @@ st.set_page_config(
 
 def create_search_strategy(query: str) -> LiteratureSearchStrategy:
     """
-    Convert the researcher's text query into the canonical
-    LiteratureSearchStrategy used by all literature adapters.
+    Convert the researcher's query into the canonical
+    LiteratureSearchStrategy used by the literature layer.
     """
 
     return LiteratureSearchStrategy(
@@ -34,12 +34,14 @@ def create_search_strategy(query: str) -> LiteratureSearchStrategy:
     )
 
 
-def get_article_value(article, *names, default=None):
-    """Safely read a value from a ResearchArticle."""
+def get_value(obj, *names, default=None):
+    """Safely read an attribute."""
 
     for name in names:
-        if hasattr(article, name):
-            value = getattr(article, name)
+
+        if hasattr(obj, name):
+
+            value = getattr(obj, name)
 
             if value is not None:
                 return value
@@ -47,52 +49,52 @@ def get_article_value(article, *names, default=None):
     return default
 
 
-def render_article(article, index: int) -> None:
-    """Render one ResearchArticle."""
+def render_article(article, index: int):
+    """Render a single ResearchArticle."""
 
-    title = get_article_value(
+    title = get_value(
         article,
         "title",
         default="Untitled article",
     )
 
-    authors = get_article_value(
+    authors = get_value(
         article,
         "authors",
         default=[],
     )
 
-    journal = get_article_value(
+    journal = get_value(
         article,
         "journal",
         default=None,
     )
 
-    publication_date = get_article_value(
+    publication_date = get_value(
         article,
         "publication_date",
         default=None,
     )
 
-    doi = get_article_value(
+    doi = get_value(
         article,
         "doi",
         default=None,
     )
 
-    pmid = get_article_value(
+    pmid = get_value(
         article,
         "pmid",
         default=None,
     )
 
-    abstract = get_article_value(
+    abstract = get_value(
         article,
         "abstract",
         default=None,
     )
 
-    url = get_article_value(
+    url = get_value(
         article,
         "url",
         "source_url",
@@ -118,28 +120,35 @@ def render_article(article, index: int) -> None:
         )
 
     if journal:
+
         st.write(
             f"**Journal:** {journal}"
         )
 
     if publication_date:
+
         st.write(
-            f"**Publication date:** {publication_date}"
+            f"**Publication date:** "
+            f"{publication_date}"
         )
 
     if doi:
+
         st.write(
             f"**DOI:** {doi}"
         )
 
     if pmid:
+
         st.write(
             f"**PMID:** {pmid}"
         )
 
     if abstract:
 
-        with st.expander("Abstract"):
+        with st.expander(
+            "Abstract"
+        ):
             st.write(abstract)
 
     if url:
@@ -152,70 +161,95 @@ def render_article(article, index: int) -> None:
     st.divider()
 
 
-def deduplicate_articles(articles):
+def article_identity(article):
     """
-    Remove duplicate articles using DOI, PMID,
-    then title as fallback.
+    Return the strongest available identity for
+    duplicate detection.
     """
 
+    doi = get_value(
+        article,
+        "doi",
+    )
+
+    if doi:
+        return (
+            "doi",
+            str(doi).strip().lower(),
+        )
+
+    pmid = get_value(
+        article,
+        "pmid",
+    )
+
+    if pmid:
+        return (
+            "pmid",
+            str(pmid).strip().lower(),
+        )
+
+    title = get_value(
+        article,
+        "title",
+    )
+
+    if title:
+        return (
+            "title",
+            str(title).strip().lower(),
+        )
+
+    return None
+
+
+def deduplicate_articles(articles):
+    """Remove duplicate articles."""
+
     unique_articles = []
+
     seen = set()
 
     for article in articles:
 
-        doi = get_article_value(
-            article,
-            "doi",
+        identity = article_identity(
+            article
         )
 
-        pmid = get_article_value(
-            article,
-            "pmid",
-        )
+        if identity is None:
 
-        title = get_article_value(
-            article,
-            "title",
-        )
-
-        if doi:
-
-            key = (
-                "doi:",
-                str(doi).strip().lower(),
+            unique_articles.append(
+                article
             )
 
-        elif pmid:
-
-            key = (
-                "pmid:",
-                str(pmid).strip().lower(),
-            )
-
-        elif title:
-
-            key = (
-                "title:",
-                str(title).strip().lower(),
-            )
-
-        else:
-
-            unique_articles.append(article)
             continue
 
-        if key in seen:
+        if identity in seen:
             continue
 
-        seen.add(key)
+        seen.add(identity)
 
-        unique_articles.append(article)
+        unique_articles.append(
+            article
+        )
 
     return unique_articles
 
 
 # ============================================================
-# Streamlit UI
+# Adapter configuration
+# ============================================================
+
+ADAPTER_CLASSES = {
+    "PubMed": PubMedAdapter,
+    "Europe PMC": EuropePMCAdapter,
+    "OpenAlex": OpenAlexAdapter,
+    "Crossref": CrossrefAdapter,
+}
+
+
+# ============================================================
+# Main application
 # ============================================================
 
 def main():
@@ -225,12 +259,13 @@ def main():
     )
 
     st.caption(
-        "Medical Research Assistant — Literature Search"
+        "Medical Research Assistant — "
+        "Literature Search"
     )
 
     st.info(
-        "AI assists the researcher; it does not replace "
-        "the researcher's scientific judgment."
+        "AI assists the researcher; it does not "
+        "replace the researcher's scientific judgment."
     )
 
     # --------------------------------------------------------
@@ -243,16 +278,25 @@ def main():
 
     selected_sources = st.sidebar.multiselect(
         "Literature sources",
-        [
-            "PubMed",
-            "Europe PMC",
-            "OpenAlex",
-            "Crossref",
-        ],
+        options=list(
+            ADAPTER_CLASSES.keys()
+        ),
         default=[
             "PubMed",
             "Europe PMC",
         ],
+    )
+
+    max_results = st.sidebar.number_input(
+        "Maximum results",
+        min_value=1,
+        max_value=100,
+        value=20,
+        step=1,
+        help=(
+            "Maximum number of articles kept "
+            "for the final result set."
+        ),
     )
 
     deduplicate = st.sidebar.checkbox(
@@ -267,8 +311,8 @@ def main():
     query = st.text_area(
         "Research question / search query",
         placeholder=(
-            "Example: laparoscopic appendectomy "
-            "postoperative complications"
+            "Example: randomized controlled trials "
+            "laparoscopic appendectomy children"
         ),
         height=120,
     )
@@ -278,10 +322,6 @@ def main():
         type="primary",
         use_container_width=True,
     )
-
-    # --------------------------------------------------------
-    # Initial screen
-    # --------------------------------------------------------
 
     if not search_clicked:
 
@@ -304,10 +344,13 @@ def main():
     # Validation
     # --------------------------------------------------------
 
-    if not query.strip():
+    query = query.strip()
+
+    if not query:
 
         st.warning(
-            "Please enter a research question or search query."
+            "Please enter a research question "
+            "or search query."
         )
 
         return
@@ -315,13 +358,14 @@ def main():
     if not selected_sources:
 
         st.warning(
-            "Please select at least one literature source."
+            "Please select at least one "
+            "literature source."
         )
 
         return
 
     # --------------------------------------------------------
-    # Create strategy
+    # Strategy
     # --------------------------------------------------------
 
     strategy = create_search_strategy(
@@ -329,29 +373,24 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Create adapters
+    # Adapters
     # --------------------------------------------------------
-
-    adapter_classes = {
-        "PubMed": PubMedAdapter,
-        "Europe PMC": EuropePMCAdapter,
-        "OpenAlex": OpenAlexAdapter,
-        "Crossref": CrossrefAdapter,
-    }
 
     adapters = []
 
     for source_name in selected_sources:
 
-        adapter_class = adapter_classes[
-            source_name
-        ]
+        adapter_class = (
+            ADAPTER_CLASSES[
+                source_name
+            ]
+        )
 
         try:
 
-            adapter = adapter_class()
-
-            adapters.append(adapter)
+            adapters.append(
+                adapter_class()
+            )
 
         except Exception as exc:
 
@@ -363,7 +402,8 @@ def main():
     if not adapters:
 
         st.error(
-            "No literature source could be initialized."
+            "No literature source could "
+            "be initialized."
         )
 
         return
@@ -384,8 +424,10 @@ def main():
                 )
             )
 
-            collection = orchestrator.search(
-                strategy
+            collection = (
+                orchestrator.search(
+                    strategy
+                )
             )
 
         except Exception as exc:
@@ -399,61 +441,114 @@ def main():
             return
 
     # --------------------------------------------------------
-    # Results
+    # Raw results
     # --------------------------------------------------------
 
-    articles = collection.all_records
+    raw_articles = list(
+        collection.all_records
+    )
+
+    # --------------------------------------------------------
+    # Deduplication
+    # --------------------------------------------------------
 
     if deduplicate:
 
         articles = deduplicate_articles(
-            articles
+            raw_articles
         )
 
+    else:
+
+        articles = raw_articles
+
     # --------------------------------------------------------
-    # Search summary
+    # FINAL LIMIT
+    #
+    # This is deliberately applied AFTER
+    # deduplication so the UI has a strict
+    # maximum result count.
+    # --------------------------------------------------------
+
+    articles = articles[
+        : int(max_results)
+    ]
+
+    # --------------------------------------------------------
+    # Header
     # --------------------------------------------------------
 
     st.success(
         f"Search completed — "
-        f"{len(articles)} article(s) available."
+        f"{len(articles)} article(s) shown."
+    )
+
+    st.caption(
+        f"Query: {query}"
     )
 
     # --------------------------------------------------------
-    # Source results
+    # Search summary
     # --------------------------------------------------------
 
     st.subheader(
         "Search summary"
     )
 
-    summary_columns = st.columns(
+    columns = st.columns(
         len(selected_sources)
     )
 
     for column, source_name in zip(
-        summary_columns,
+        columns,
         selected_sources,
     ):
 
-        source_results = [
-            result
-            for result in collection.results
-            if result.source.value == source_name
-            or result.source.name == source_name.upper().replace(
-                " ",
-                "_",
-            )
-        ]
+        source_count = 0
 
-        count = sum(
-            len(result.records)
-            for result in source_results
-        )
+        for result in collection.results:
+
+            source_value = getattr(
+                result.source,
+                "value",
+                str(result.source),
+            )
+
+            if (
+                source_value.lower()
+                == source_name.lower()
+            ):
+
+                source_count += len(
+                    result.records
+                )
 
         column.metric(
             source_name,
-            count,
+            source_count,
+        )
+
+    # --------------------------------------------------------
+    # Raw vs final result count
+    # --------------------------------------------------------
+
+    with st.expander(
+        "Search diagnostics"
+    ):
+
+        st.write(
+            f"Raw records returned: "
+            f"{len(raw_articles)}"
+        )
+
+        st.write(
+            f"After deduplication: "
+            f"{len(articles)}"
+        )
+
+        st.write(
+            f"Maximum displayed: "
+            f"{int(max_results)}"
         )
 
     # --------------------------------------------------------
@@ -466,7 +561,9 @@ def main():
             "⚠️ Sources with errors"
         ):
 
-            for failure in collection.failures:
+            for failure in (
+                collection.failures
+            ):
 
                 st.warning(
                     f"{failure.adapter_name}: "
@@ -481,13 +578,14 @@ def main():
 
         st.info(
             "No articles were found. "
-            "Try a broader or differently worded query."
+            "Try a broader or differently "
+            "worded query."
         )
 
         return
 
     # --------------------------------------------------------
-    # Render
+    # Results
     # --------------------------------------------------------
 
     st.subheader(
