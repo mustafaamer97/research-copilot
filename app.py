@@ -887,7 +887,7 @@ def main():
 
                     funding_source = st.text_input(
                         "Funding Source",
-                        key=f"funding_{key}",
+                        key=f"funding_source_{key}",
                     )
 
                     conflict_of_interest = st.selectbox(
@@ -897,12 +897,13 @@ def main():
                             "Not Declared",
                             "Unclear",
                         ],
-                        key=f"coi_{key}",
+                        key=f"conflict_of_interest_{key}",
                     )
 
                     follow_up_duration = st.text_input(
                         "Follow-up Duration",
-                        key=f"followup_{key}",
+                        placeholder="e.g. 12 months",
+                        key=f"follow_up_duration_{key}",
                     )
 
                     notes = st.text_area(
@@ -910,10 +911,16 @@ def main():
                         key=f"notes_{key}",
                     )
 
-                    if st.button(
+                    st.caption(
+                        "Required fields: Risk of Bias and Sample Size"
+                    )
+
+                    save_extraction_clicked = st.button(
                         f"Save Extraction #{idx}",
                         key=f"save_extraction_{key}",
-                    ):
+                    )
+
+                    if save_extraction_clicked:
 
                         st.session_state[
                             f"extraction_{key}"
