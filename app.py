@@ -587,22 +587,122 @@ def main():
         return
 
     # --------------------------------------------------------
-    # Results
+    # Results + Screening MVP
     # --------------------------------------------------------
+
+    if "screening_decisions" not in st.session_state:
+        st.session_state.screening_decisions = {}
 
     st.subheader(
         "Literature results"
     )
 
+    included_count = sum(
+        1
+        for value in st.session_state.screening_decisions.values()
+        if value["decision"] == "Include"
+    )
+
+    excluded_count = sum(
+        1
+        for value in st.session_state.screening_decisions.values()
+        if value["decision"] == "Exclude"
+    )
+
+    maybe_count = sum(
+        1
+        for value in st.session_state.screening_decisions.values()
+        if value["decision"] == "Maybe"
+    )
+
+    remaining_count = max(
+        0,
+        len(articles)
+        - len(st.session_state.screening_decisions)
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric("Included", included_count)
+    c2.metric("Excluded", excluded_count)
+    c3.metric("Maybe", maybe_count)
+    c4.metric("Remaining", remaining_count)
+
     for index, article in enumerate(
         articles,
         start=1,
     ):
-
         render_article(
             article,
             index,
         )
+
+        article_key = f"article_{index}"
+
+        existing = (
+            st.session_state
+            .screening_decisions
+            .get(article_key)
+        )
+
+        decision = st.radio(
+            f"Decision #{index}",
+            [
+                "Include",
+                "Exclude",
+                "Maybe",
+            ],
+            key=f"decision_{index}",
+            index=None,
+        )
+
+        exclusion_reason = None
+
+        if decision == "Exclude":
+            exclusion_reason = st.selectbox(
+                f"Reason #{index}",
+                [
+                    "Wrong Population",
+                    "Wrong Intervention",
+                    "Wrong Outcome",
+                    "Wrong Study Design",
+                    "Animal Study",
+                    "Not Original Research",
+                    "Other",
+                ],
+                key=f"reason_{index}",
+            )
+
+        if st.button(
+            f"Save Decision #{index}",
+            key=f"save_{index}",
+        ):
+            st.session_state.screening_decisions[
+                article_key
+            ] = {
+                "decision": decision,
+                "reason": exclusion_reason,
+            }
+
+            st.success(
+                "Decision saved."
+            )
+
+        if existing:
+            message = (
+                f"Saved Decision: "
+                f"{existing['decision']}"
+            )
+
+            if existing["reason"]:
+                message += (
+                    f" | Reason: "
+                    f"{existing['reason']}"
+                )
+
+            st.info(message)
+
+        st.divider()
 
 
 if __name__ == "__main__":
