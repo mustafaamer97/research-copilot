@@ -13,6 +13,7 @@ from literature.orchestrator import LiteratureSearchOrchestrator
 from infrastructure.sqlite_screening import (
     initialize_database,
     save_decision,
+    load_decisions,
 )
 
 
@@ -258,6 +259,17 @@ ADAPTER_CLASSES = {
 def main():
 
     initialize_database()
+
+    if (
+        "persisted_decisions_loaded"
+        not in st.session_state
+    ):
+
+        persisted = load_decisions()
+
+        st.session_state.persisted_decisions = persisted
+
+        st.session_state.persisted_decisions_loaded = True
 
     st.title(
         "🔬 Research Copilot"
@@ -705,6 +717,24 @@ def main():
                 .get(article_key)
             )
 
+            saved_decision = (
+                st.session_state
+                .persisted_decisions
+                .get(article_key, {})
+                .get("decision")
+            )
+
+            default_index = None
+
+            if saved_decision == "Include":
+                default_index = 0
+
+            elif saved_decision == "Exclude":
+                default_index = 1
+
+            elif saved_decision == "Maybe":
+                default_index = 2
+
             decision = st.radio(
                 f"Decision #{index}",
                 [
@@ -713,7 +743,7 @@ def main():
                     "Maybe",
                 ],
                 key=f"decision_{index}",
-                index=None,
+                index=default_index,
             )
 
             exclusion_reason = None
