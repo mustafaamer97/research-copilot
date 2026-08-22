@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+
+class RiskOfBias(str, Enum):
+    LOW = "Low"
+    SOME_CONCERNS = "Some Concerns"
+    HIGH = "High"
 
 
 class EvidenceExtraction(BaseModel):
@@ -29,12 +36,10 @@ class EvidenceExtraction(BaseModel):
 
     study_design: str | None = None
 
-    risk_of_bias: str | None = None
+    risk_of_bias: RiskOfBias | None = None
 
     notes: str | None = None
 
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(
-            timezone.utc
-        )
+        default_factory=lambda: datetime.now(timezone.utc)
     )
