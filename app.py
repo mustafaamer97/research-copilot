@@ -826,6 +826,115 @@ def main():
 
                 st.success("Current Decision: Include")
 
+                with st.expander(
+                    f"Evidence Extraction #{idx}"
+                ):
+
+                    population = st.text_area(
+                        "Population",
+                        key=f"population_{key}",
+                    )
+
+                    intervention = st.text_area(
+                        "Intervention",
+                        key=f"intervention_{key}",
+                    )
+
+                    comparator = st.text_area(
+                        "Comparator",
+                        key=f"comparator_{key}",
+                    )
+
+                    outcome = st.text_area(
+                        "Outcome",
+                        key=f"outcome_{key}",
+                    )
+
+                    study_design = st.selectbox(
+                        "Study Design",
+                        [
+                            "Randomized Controlled Trial (RCT)",
+                            "Non-Randomized Trial",
+                            "Cohort Study",
+                            "Case-Control Study",
+                            "Cross-Sectional Study",
+                            "Systematic Review",
+                            "Meta-Analysis",
+                            "Case Series",
+                            "Case Report",
+                            "Qualitative Study",
+                            "Other",
+                        ],
+                        key=f"study_design_{key}",
+                    )
+
+                    risk_of_bias = st.selectbox(
+                        "Risk of Bias *",
+                        [
+                            "Low",
+                            "Some Concerns",
+                            "High",
+                        ],
+                        key=f"risk_of_bias_{key}",
+                    )
+
+                    sample_size = st.number_input(
+                        "Sample Size *",
+                        min_value=0,
+                        step=1,
+                        key=f"sample_size_{key}",
+                    )
+
+                    funding_source = st.text_input(
+                        "Funding Source",
+                        key=f"funding_{key}",
+                    )
+
+                    conflict_of_interest = st.selectbox(
+                        "Conflict of Interest",
+                        [
+                            "Declared",
+                            "Not Declared",
+                            "Unclear",
+                        ],
+                        key=f"coi_{key}",
+                    )
+
+                    follow_up_duration = st.text_input(
+                        "Follow-up Duration",
+                        key=f"followup_{key}",
+                    )
+
+                    notes = st.text_area(
+                        "Notes",
+                        key=f"notes_{key}",
+                    )
+
+                    if st.button(
+                        f"Save Extraction #{idx}",
+                        key=f"save_extraction_{key}",
+                    ):
+
+                        st.session_state[
+                            f"extraction_{key}"
+                        ] = {
+                            "population": population,
+                            "intervention": intervention,
+                            "comparator": comparator,
+                            "outcome": outcome,
+                            "study_design": study_design,
+                            "risk_of_bias": risk_of_bias,
+                            "sample_size": sample_size,
+                            "funding_source": funding_source,
+                            "conflict_of_interest": conflict_of_interest,
+                            "follow_up_duration": follow_up_duration,
+                            "notes": notes,
+                        }
+
+                        st.success(
+                            "Evidence extraction saved."
+                        )
+
                 c1, c2 = st.columns(2)
 
                 if c1.button(
