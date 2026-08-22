@@ -158,8 +158,6 @@ def render_article(article, index: int):
             url,
         )
 
-    st.divider()
-
 
 def article_identity(article):
     """
@@ -269,6 +267,31 @@ def main():
     )
 
     # --------------------------------------------------------
+    # Session State Initialization
+    # --------------------------------------------------------
+
+    if "articles" not in st.session_state:
+        st.session_state.articles = None
+
+    if "collection" not in st.session_state:
+        st.session_state.collection = None
+
+    if "raw_articles" not in st.session_state:
+        st.session_state.raw_articles = []
+
+    if "deduplicated_articles" not in st.session_state:
+        st.session_state.deduplicated_articles = []
+
+    if "active_query" not in st.session_state:
+        st.session_state.active_query = ""
+
+    if "active_sources" not in st.session_state:
+        st.session_state.active_sources = []
+
+    if "screening_decisions" not in st.session_state:
+        st.session_state.screening_decisions = {}
+
+    # --------------------------------------------------------
     # Sidebar
     # --------------------------------------------------------
 
@@ -323,7 +346,130 @@ def main():
         use_container_width=True,
     )
 
-    if not search_clicked:
+    # --------------------------------------------------------
+    # Search Execution
+    # --------------------------------------------------------
+
+    if search_clicked:
+
+        clean_query = query.strip()
+
+        if not clean_query:
+
+            st.warning(
+                "Please enter a research question "
+                "or search query."
+            )
+
+            return
+
+        if not selected_sources:
+
+            st.warning(
+                "Please select at least one "
+                "literature source."
+            )
+
+            return
+
+        strategy = create_search_strategy(
+            clean_query
+        )
+
+        adapters = []
+
+        for source_name in selected_sources:
+
+            adapter_class = (
+                ADAPTER_CLASSES[
+                    source_name
+                ]
+            )
+
+            try:
+
+                adapters.append(
+                    adapter_class()
+                )
+
+            except Exception as exc:
+
+                st.error(
+                    f"Could not initialize "
+                    f"{source_name}: {exc}"
+                )
+
+        if not adapters:
+
+            st.error(
+                "No literature source could "
+                "be initialized."
+            )
+
+            return
+
+        with st.spinner(
+            "Searching the literature..."
+        ):
+
+            try:
+
+                orchestrator = (
+                    LiteratureSearchOrchestrator(
+                        adapters=adapters
+                    )
+                )
+
+                collection = (
+                    orchestrator.search(
+                        strategy
+                    )
+                )
+
+                raw_articles = list(
+                    collection.all_records
+                )
+
+                if deduplicate:
+
+                    deduplicated_articles = (
+                        deduplicate_articles(
+                            raw_articles
+                        )
+                    )
+
+                else:
+
+                    deduplicated_articles = raw_articles
+
+                articles = deduplicated_articles[
+                    : int(max_results)
+                ]
+
+                # Store all search results in session state
+                st.session_state.collection = collection
+                st.session_state.raw_articles = raw_articles
+                st.session_state.deduplicated_articles = deduplicated_articles
+                st.session_state.articles = articles
+                st.session_state.active_query = clean_query
+                st.session_state.active_sources = selected_sources
+                st.session_state.screening_decisions = {}
+
+            except Exception as exc:
+
+                st.error(
+                    f"Literature search failed: {exc}"
+                )
+
+                st.exception(exc)
+
+                return
+
+    # --------------------------------------------------------
+    # Check if we have active search results
+    # --------------------------------------------------------
+
+    if st.session_state.articles is None:
 
         st.markdown(
             """
@@ -340,141 +486,13 @@ def main():
 
         return
 
-    # --------------------------------------------------------
-    # Validation
-    # --------------------------------------------------------
-
-    query = query.strip()
-
-    if not query:
-
-        st.warning(
-            "Please enter a research question "
-            "or search query."
-        )
-
-        return
-
-    if not selected_sources:
-
-        st.warning(
-            "Please select at least one "
-            "literature source."
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # Strategy
-    # --------------------------------------------------------
-
-    strategy = create_search_strategy(
-        query
-    )
-
-    # --------------------------------------------------------
-    # Adapters
-    # --------------------------------------------------------
-
-    adapters = []
-
-    for source_name in selected_sources:
-
-        adapter_class = (
-            ADAPTER_CLASSES[
-                source_name
-            ]
-        )
-
-        try:
-
-            adapters.append(
-                adapter_class()
-            )
-
-        except Exception as exc:
-
-            st.error(
-                f"Could not initialize "
-                f"{source_name}: {exc}"
-            )
-
-    if not adapters:
-
-        st.error(
-            "No literature source could "
-            "be initialized."
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # Search
-    # --------------------------------------------------------
-
-    with st.spinner(
-        "Searching the literature..."
-    ):
-
-        try:
-
-            orchestrator = (
-                LiteratureSearchOrchestrator(
-                    adapters=adapters
-                )
-            )
-
-            collection = (
-                orchestrator.search(
-                    strategy
-                )
-            )
-
-        except Exception as exc:
-
-            st.error(
-                f"Literature search failed: {exc}"
-            )
-
-            st.exception(exc)
-
-            return
-
-    # --------------------------------------------------------
-    # Raw results
-    # --------------------------------------------------------
-
-    raw_articles = list(
-        collection.all_records
-    )
-
-    # --------------------------------------------------------
-    # Deduplication
-    # --------------------------------------------------------
-
-    if deduplicate:
-
-        deduplicated_articles = (
-            deduplicate_articles(
-                raw_articles
-            )
-        )
-
-    else:
-
-        deduplicated_articles = raw_articles
-
-    # --------------------------------------------------------
-    # FINAL LIMIT
-    #
-    # This is deliberately applied AFTER
-    # deduplication so the UI has a strict
-    # maximum result count.
-    # --------------------------------------------------------
-
-    articles = deduplicated_articles[
-        : int(max_results)
-    ]
+    # Fetch active data from state
+    articles = st.session_state.articles
+    collection = st.session_state.collection
+    raw_articles = st.session_state.raw_articles
+    deduplicated_articles = st.session_state.deduplicated_articles
+    active_sources = st.session_state.active_sources
+    active_query = st.session_state.active_query
 
     # --------------------------------------------------------
     # Header
@@ -486,7 +504,7 @@ def main():
     )
 
     st.caption(
-        f"Query: {query}"
+        f"Query: {active_query}"
     )
 
     # --------------------------------------------------------
@@ -498,12 +516,12 @@ def main():
     )
 
     columns = st.columns(
-        len(selected_sources)
+        len(active_sources)
     )
 
     for column, source_name in zip(
         columns,
-        selected_sources,
+        active_sources,
     ):
 
         source_count = 0
@@ -550,14 +568,14 @@ def main():
 
         st.write(
             f"Maximum displayed: "
-            f"{int(max_results)}"
+            f"{len(articles)}"
         )
 
     # --------------------------------------------------------
     # Failures
     # --------------------------------------------------------
 
-    if collection.failures:
+    if collection and collection.failures:
 
         with st.expander(
             "⚠️ Sources with errors"
@@ -590,11 +608,10 @@ def main():
     # Results + Screening MVP
     # --------------------------------------------------------
 
-    if "screening_decisions" not in st.session_state:
-        st.session_state.screening_decisions = {}
+    st.markdown("---")
 
     st.subheader(
-        "Literature results"
+        "Screening Progress"
     )
 
     included_count = sum(
@@ -627,6 +644,12 @@ def main():
     c2.metric("Excluded", excluded_count)
     c3.metric("Maybe", maybe_count)
     c4.metric("Remaining", remaining_count)
+
+    st.markdown("---")
+
+    st.subheader(
+        "Literature results"
+    )
 
     for index, article in enumerate(
         articles,
