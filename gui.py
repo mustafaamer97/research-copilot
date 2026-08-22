@@ -87,25 +87,41 @@ if st.button("Start Combined Search 🚀", type="primary"):
             fetched_articles = asyncio.run(fetch_all())
 
         if fetched_articles:
-            st.success(f"Found {len(fetched_articles)} articles.")
+            st.success(f"Found results from {len(fetched_articles)} sources.")
 
-            # Diagnostic & Normalization Inspection View
-            st.subheader("🔍 Article Attributes & Data Inspection")
-            
+            # Article Extraction and Rendering
             for i, article in enumerate(fetched_articles, 1):
-                # Safe extraction attempts
-                title = getattr(article, "title", None) or getattr(article, "paper_title", None) or "Untitled Article"
-                doi = getattr(article, "doi", None) or getattr(article, "identifier", None) or "N/A"
                 
-                with st.expander(f"{i}. {title}"):
-                    st.write(f"**DOI:** {doi}")
-                    st.write("**Object Type:**", type(article).__name__)
-                    st.write("**Raw Object Properties (vars):**")
-                    
-                    # Display full internal structure of the article object
-                    if hasattr(article, "__dict__"):
-                        st.json(vars(article))
+                # Handling Tuple output from specific adapters
+                if isinstance(article, tuple):
+                    key, value = article
+                    if key == "records":
+                        articles = value
                     else:
-                        st.write(article)
+                        articles = []
+                else:
+                    articles = [article]
+
+                # Render each record
+                for record in articles:
+                    title = getattr(record, "title", "Untitled Article")
+                    abstract = getattr(record, "abstract", "No abstract available.")
+                    doi = getattr(record, "doi", "N/A")
+                    journal = getattr(record, "journal", "Unknown Journal")
+                    authors = getattr(record, "authors", [])
+
+                    # Ensure authors is iterable (list of strings)
+                    if not isinstance(authors, list):
+                        authors = [str(authors)] if authors else []
+                    
+                    authors_str = ", ".join(str(a) for a in authors) if authors else "Unknown Authors"
+
+                    with st.expander(f"{title}"):
+                        st.write(f"**Journal:** {journal}")
+                        st.write(f"**Authors:** {authors_str}")
+                        st.write(f"**DOI:** {doi}")
+                        st.write("**Abstract:**")
+                        st.write(abstract)
+
         else:
             st.warning("No results found matching your query.")
